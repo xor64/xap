@@ -24,9 +24,37 @@
 // originally authored by Alexey Kutepov <reximkut@gmail.com>
 // All rights reserved by the original creator.
 
-// Configurable macros:
-// XAP_DISPLAY_VERSION - If defined enables the version flag
-// XAP_EXIT_ON_ERROR   - If defined the program exits immediately when an error in XAP occurs
+
+/// # Configurable macros
+/// | macro name          | Description                                           |
+/// |---------------------|-------------------------------------------------------|
+/// | XAP_DISPLAY_VERSION | If defined, enables the version flag                  |
+/// | XAP_EXIT_ON_ERROR   | If defined, the program exits immediately on an error |
+/// | XAP_USE_COLOR       | If defined, enables the use of color and styles       |
+///
+/// Redefinable macros:
+/// | Macro name   | Description |
+/// |--------------|-------------|
+/// | XAP_ASSERT   | Assert      |
+/// | XAP_REALLOC  | Mem         |
+/// | XAP_ALLOC    | Mem         |
+/// | XAP_FREE     | Mem         |
+///
+/// # Public functions
+/// 
+/// Note: s_size_t is a macro of ptrdiff_t
+///
+/// | Description                 | Function Definition                                          |
+/// |-----------------------------|--------------------------------------------------------------|
+/// | Main entry func for XAP     | xap_result_t xap_parse(xap_t* xap, int argc, char** argv);   |
+/// | Free all allocated memory   | void xap_free(xap_t xap);                                    |
+/// | Get char* value by name     | char* xap_get_arg_value_str(xap_t* xap, char* arg_name);     |
+/// | Get size_t* value by name   | size_t* xap_get_arg_value_uint(xap_t* xap, char* arg_name);  |
+/// | Get s_size_t* value by name | s_size_t* xap_get_arg_value_int(xap_t* xap, char* arg_name); | 
+/// | Get float* value by name    | float* xap_get_arg_value_float(xap_t* xap, char* arg_name);  |
+/// | Get bool* value by name     | bool* xap_get_arg_value_bool(xap_t* xap, char* arg_name);    |
+/// | Make all text uppercase     | void xap_to_upper(char* str);                                |
+/// | Make all text lowercase     | void xap_to_lower(char* str);                                |
 
 
 #ifndef _H_XAP
@@ -39,14 +67,43 @@
 #include <string.h>
 #include <ctype.h>
 #include <stddef.h>
+#include <stdarg.h>
 
 #define s_size_t ptrdiff_t
 
+
+
+#ifndef xap_log_error
+    #define xap_log_error(fmt, ...) _xap_log_error(fmt, __VA_ARGS__)
+#endif
+
+#ifndef XAP_ASSERT
+    #define XAP_ASSERT assert
+#endif
+#ifndef XAP_REALLOC
+    #define XAP_REALLOC realloc
+#endif
+#ifndef XAP_ALLOC
+    #define XAP_ALLOC malloc
+#endif
+#ifndef XAP_FREE
+    #define XAP_FREE free
+#endif
+
+#ifdef XAP_USE_COLOR
+    #define XAP_C_UL  "\e[4m" 
+    #define XAP_C_RED "\e[0;31m"
+    #define XAP_C_RS  "\e[0m"
+    #define XAP_C_BL "\e[1m"
+#else
+    #define XAP_C_UL  "" 
+    #define XAP_C_RED ""
+    #define XAP_C_RS  ""
+    #define XAP_C_BL ""
+#endif
+
+
 // From nob, starting from here
-#define XAP_ASSERT assert
-#define XAP_REALLOC realloc
-#define XAP_ALLOC malloc
-#define XAP_FREE free
 
 #define XAP_DA_INIT_CAP 256
 
@@ -67,7 +124,7 @@
     } while (0)
 
 #define XAP_DA_FREE(da) XAP_FREE((da).items)
-
+/proc/sys/kernel/core_pattern
 #define XAP_DA_APPEND(da, new_items, new_items_count)                                           \
     do {                                                                                        \
         if ((da)->count + (new_items_count) > (da)->capacity) {                                 \
@@ -103,6 +160,7 @@ typedef struct xap_arg_t {
     char* description;
     void* value;
     void* default_value;
+    bool required;
     xap_arg_type_e type;
 } xap_arg_t;
 
@@ -133,6 +191,7 @@ typedef enum xap_result_t {
 
 
 xap_arg_t* xap_get_arg(xap_t* xap, char* arg_name);
+xap_result_t _xap_parse(xap_t* xap, int argc, char** argv); // used internally
 xap_result_t xap_parse(xap_t* xap, int argc, char** argv);
 char* xap_get_arg_value_str(xap_t* xap, char* arg_name);
 size_t* xap_get_arg_value_uint(xap_t* xap, char* arg_name);
@@ -140,9 +199,12 @@ s_size_t* xap_get_arg_value_int(xap_t* xap, char* arg_name);
 float* xap_get_arg_value_float(xap_t* xap, char* arg_name);
 bool* xap_get_arg_value_bool(xap_t* xap, char* arg_name);
 xap_result_t xap_parse_arg(xap_arg_t* arg, char* arg_text);
+void xap_free(xap_t xap);
 void xap_to_upper(char* str);
 void xap_to_lower(char* str);
-void xap_show_help(xap_t* xap); 
+void xap_show_help(xap_t* xap);
+void _xap_log_error(char* format, ...);
+
 
 #ifdef XAP_IMPL
 
@@ -177,7 +239,32 @@ xap_result_t xap_pre_parse(xap_t* xap) {
 #endif
 }
 
+xap_result_t xap_post_check(xap_t* xap) {
+    for (size_t i = 0; i < xap->args.count; i++) {
+        xap_arg_t* arg_def = &xap->args.items[i];
+        if (arg_def->required) {
+            if (arg_def->value == NULL) {
+                xap_show_help(xap);
+                xap_log_error("Missing required value --%s\n", arg_def->s_long);
+                return XAP_EXIT;
+            }
+        }
+    }
+    return XAP_OK;
+}
+
 xap_result_t xap_parse(xap_t* xap, int argc, char** argv) {
+    xap_result_t res = _xap_parse(xap, argc, argv);
+
+#ifdef XAP_EXIT_ON_ERROR
+    if (res == XAP_EXIT) {
+        exit(1);
+    } 
+#endif 
+    return res;
+}
+
+xap_result_t _xap_parse(xap_t* xap, int argc, char** argv) {
     xap->program = xap_shift_args(&argc, &argv);
     xap_pre_parse(xap);
     while (argc > 0) {
@@ -196,7 +283,8 @@ xap_result_t xap_parse(xap_t* xap, int argc, char** argv) {
                 for (size_t i = 0; i < xap->args.count; i++) {
                     xap_arg_t* arg_def = &xap->args.items[i];
                     if (strcmp(arg_def->s_long, arg_str) == 0) {
-                        xap_parse_arg(arg_def, arg_str);
+                        xap_result_t res = xap_parse_arg(arg_def, arg_str);
+                        if (res != XAP_OK) return res; 
                         break;
                     }
                 }
@@ -213,7 +301,8 @@ xap_result_t xap_parse(xap_t* xap, int argc, char** argv) {
                     }
 
                     if (arg_def->s_short == arg_str[0]) {
-                        xap_parse_arg(arg_def, arg_str);
+                        xap_result_t res = xap_parse_arg(arg_def, arg_str);
+                        if (res != XAP_OK) return res;
                         break;
                     }
                 }
@@ -241,43 +330,74 @@ xap_result_t xap_parse(xap_t* xap, int argc, char** argv) {
         return XAP_EXIT;
     }
 #endif
-    return XAP_OK;
+    
+    return xap_post_check(xap);
+}
+
+void xap_free(xap*) {
+    for (size_t i = 0; i < xap->args.count; i++) {
+        xap_arg_t* arg_def = &xap->args.items[i];
+        XAP_FREE(arg_def->value)
+    }
+    XAP_FREE(xap->args.items);
 }
 
 void xap_show_help(xap_t* xap) {
-    // TODO: Formatting
-    
+    char buf[256];
+
     if (xap->description) {
         printf("%s\n", xap->description);
     }
 
-    printf("Usage: %s [options] ", xap->program);
+    printf(XAP_C_UL "" XAP_C_BL "Usage" XAP_C_RS "" XAP_C_BL ": %s " XAP_C_RS "[options] ", xap->program);
+    size_t indent_size = 0;
+
+
+    for (size_t i = 0; i < xap->args.count; i++) {
+        xap_arg_t* arg_def = &xap->args.items[i];
+        
+        size_t len = strlen(arg_def->s_long);
+        if (arg_def->required) {
+            memcpy(buf, arg_def->s_long, 256);
+            xap_to_upper(buf);
+
+            printf(XAP_C_BL "--%s" XAP_C_RS " <%s> ", arg_def->s_long, buf);
+            len = (len * 2) + 3;
+            if (len > indent_size) indent_size = len;
+        } else {
+            if (len > indent_size) indent_size = len;
+        }
+    }
+
+
+
     if (xap->post_args_name != NULL) {
         printf("[args]");
     }
     printf("...\n\n");
 
     if (xap->post_args_name && xap->post_args_description) {
-        printf("Arguments:\n");
+        printf(XAP_C_UL "" XAP_C_BL "Arguments:\n" XAP_C_RS);
         printf("    [%s]... %s\n\n",xap->post_args_name, xap->post_args_description);
     }
     
-    size_t indent_size = 0;
-
-    for (size_t i = 0; i < xap->args.count; i++) {
-        xap_arg_t* arg_def = &xap->args.items[i];
-        
-        size_t len = strlen(arg_def->s_long);
-        if (len > indent_size) indent_size = len;
-    }
-
 
     if (xap->args.count > 0) {
-        printf("Options:\n");
+        printf(XAP_C_UL "" XAP_C_BL "Options:\n" XAP_C_RS);
+
         for (size_t i = 0; i < xap->args.count; i++) {
             xap_arg_t* arg_def = &xap->args.items[i];
-            printf("    -%c, --%s", arg_def->s_short, arg_def->s_long);
+            printf("    " XAP_C_BL "-%c" XAP_C_RS ", " XAP_C_BL "--%s" XAP_C_RS, arg_def->s_short, arg_def->s_long);
+            
             size_t len = strlen(arg_def->s_long);
+
+            if (arg_def->required) {
+                memcpy(buf, arg_def->s_long, 256);
+                xap_to_upper(buf);
+                len = (len * 2) + 3;
+                printf(" <%s>", buf);
+            }
+
             for (size_t y = 0; y <= indent_size - len; y++) {
                 printf(" ");
             }
@@ -313,6 +433,14 @@ void xap_show_help(xap_t* xap) {
     if (xap->footer) {
         printf("\n%s\n", xap->footer);
     }
+}
+
+void _xap_log_error(char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    fprintf(stderr, XAP_C_BL"[" XAP_C_RED "ERROR" XAP_C_RS "" XAP_C_BL "] " XAP_C_RS);
+    vfprintf(stderr, format, args);
+    va_end(args);
 }
 
 void xap_print_args(xap_t* xap) {

@@ -1,4 +1,5 @@
 #define XAP_DISPLAY_VERSION
+#define XAP_USE_COLOR
 #define XAP_IMPL
 #include "xap.h"
 #include <stdio.h>
@@ -14,7 +15,9 @@ int main(int argc, char** argv) {
     xap_t xap = {
         .description = "Testing program for XAP :3",
         .version = "0.0.1",
-        .footer = "This pogram is licenced under blah blah blah"
+        .footer = "This pogram is licenced under blah blah blah",
+        .post_args_name = "files",
+        .post_args_description = "Files to blah blah :3"
     };
     
     
@@ -66,22 +69,35 @@ int main(int argc, char** argv) {
         .default_value = NULL // XAP_ARG_STR doesnt accept default values
     };
 
+    xap_arg_t a_req = {
+        .s_long = "required",
+        .s_short = 'r',
+        .description = "A required value",
+        .type = XAP_ARG_STR,
+        .default_value = NULL,
+        .required = true
+    };
+
     
     xap_arg_add(&xap, a_str);
     xap_arg_add(&xap, a_uint);
     xap_arg_add(&xap, a_int);
     xap_arg_add(&xap, a_float);
-    xap_arg_add(&xap, a_bool);
+    xap_arg_add(&xap, a_bool); 
     xap_arg_add(&xap, a_toggle);
+    xap_arg_add(&xap, a_req);
 
     xap_parse(&xap, argc, argv);
 
     
-    // bool* v_str = xap_get_arg_value_str(&xap, "str");
+    bool* v_str = xap_get_arg_value_str(&xap, "str");
     size_t* v_uint = xap_get_arg_value_uint(&xap, "uint");
-    // bool* v_int = xap_get_arg_value_int(&xap, "int");
-    // bool* v_float = xap_get_arg_value_float(&xap, "float");
-    // bool* v_bool = xap_get_arg_value_bool(&xap, "bool");
+    // s_size_t is a macro for ptrdiff_t aka signed size_t
+    s_size_t* v_int = xap_get_arg_value_int(&xap, "int");
+    float* v_float = xap_get_arg_value_float(&xap, "float");
+    bool* v_bool = xap_get_arg_value_bool(&xap, "bool");
     
     // xap_print_args(&xap);
+    
+    // printf("Did not exit\n");
 }

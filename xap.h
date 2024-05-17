@@ -1,4 +1,4 @@
-// Copyright 2024 Gvidas Juknevcius <mcorange@mcorangehq.xyz>
+// Copyright 2024 Gvidas Juknevicius <mcorange@mcorangehq.xyz>
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the

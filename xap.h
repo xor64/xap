@@ -43,7 +43,7 @@
 /// | Description                 | Function Definition                                          |
 /// |-----------------------------|--------------------------------------------------------------|
 /// | Main entry func for XAP     | xap_result_t xap_parse(xap_t* xap, int argc, char** argv);   |
-/// | Free all allocated memory   | void xap_free(xap_t xap);                                    |
+/// | Free all allocated memory   | void xap_free(xap_t* xap);                                    |
 /// | Get char* value by name     | char* xap_get_arg_value_str(xap_t* xap, char* arg_name);     |
 /// | Get size_t* value by name   | size_t* xap_get_arg_value_uint(xap_t* xap, char* arg_name);  |
 /// | Get s_size_t* value by name | s_size_t* xap_get_arg_value_int(xap_t* xap, char* arg_name); | 
@@ -195,7 +195,7 @@ s_size_t* xap_get_arg_value_int(xap_t* xap, char* arg_name);
 float* xap_get_arg_value_float(xap_t* xap, char* arg_name);
 bool* xap_get_arg_value_bool(xap_t* xap, char* arg_name);
 xap_result_t xap_parse_arg(xap_arg_t* arg, char* arg_text);
-void xap_free(xap_t xap);
+void xap_free(xap_t* xap);
 void xap_to_upper(char* str);
 void xap_to_lower(char* str);
 void xap_show_help(xap_t* xap);
@@ -330,10 +330,10 @@ xap_result_t _xap_parse(xap_t* xap, int argc, char** argv) {
     return xap_post_check(xap);
 }
 
-void xap_free(xap*) {
+void xap_free(xap_t* xap) {
     for (size_t i = 0; i < xap->args.count; i++) {
         xap_arg_t* arg_def = &xap->args.items[i];
-        XAP_FREE(arg_def->value)
+        XAP_FREE(arg_def->value);
     }
     XAP_FREE(xap->args.items);
 }

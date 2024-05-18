@@ -120,7 +120,7 @@
     } while (0)
 
 #define XAP_DA_FREE(da) XAP_FREE((da).items)
-/proc/sys/kernel/core_pattern
+
 #define XAP_DA_APPEND(da, new_items, new_items_count)                                           \
     do {                                                                                        \
         if ((da)->count + (new_items_count) > (da)->capacity) {                                 \

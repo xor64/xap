@@ -51,6 +51,10 @@
 /// | Get bool* value by name     | bool* xap_get_arg_value_bool(xap_t* xap, char* arg_name);    |
 /// | Make all text uppercase     | void xap_to_upper(char* str);                                |
 /// | Make all text lowercase     | void xap_to_lower(char* str);                                |
+/// | Adds 1 arg                  | void xap_arg_add(xap_t* xap, xap_arg_t arg)                  |
+/// | Adds many args, from a ptr  | void xap_arg_add_many(xap_t* xap, 
+///                                                      xap_arg_t* args, size_t count)          |
+/// | Adds args from a static arr | void xap_arg_add_arr(xap_t* xap, static xap_arg_t arr[])     |  
 
 
 #ifndef _H_XAP
@@ -140,6 +144,8 @@
 // Nob code ends here
 
 #define xap_arg_add(xap, arg) XAP_DA_PUSH(&(xap)->args, arg)
+#define xap_arg_add_many(xap, args, arg_count) XAP_DA_APPEND(&(xap)->args, args, arg_count)
+#define xap_arg_add_arr(xap, arr) xap_arg_add_many(xap, arr, XAP_ARRAY_LEN(arr))
 
 typedef enum xap_arg_type_e {
     XAP_ARG_STR,
